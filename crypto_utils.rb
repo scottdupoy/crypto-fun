@@ -125,14 +125,19 @@ def convert_nibble_to_hex(byte)
     raise "cannot convert > 15 byte to hex"
 end
 
+def convert_byte_to_hex(byte)
+    # do each half of the byte separately
+    nibble1 = (byte & 0xf0) >> 4
+    nibble2 = byte & 0xf
+    result = convert_nibble_to_hex(nibble1)
+    result += convert_nibble_to_hex(nibble2)
+    result
+end
+
 def convert_bytes_to_hex(bytes)
     result = ""
-    for i in 0..(bytes.length - 1)    
-        # do each half of the byte separately
-        nibble1 = (bytes[i] & 0xf0) >> 4
-        nibble2 = bytes[i] & 0xf
-        result += convert_nibble_to_hex(nibble1)
-        result += convert_nibble_to_hex(nibble2)
+    for i in 0..(bytes.length - 1)
+        result += convert_byte_to_hex(bytes[i])
     end
     # strip off any leading '0'
     # while result.length > 0 && result[0] == '0'
@@ -266,3 +271,26 @@ def decode_single_byte_xor_cypher(encoded_hex)
     end
     return bestDecoded, bestByte, bestScore;
 end
+
+def encrypt_repeating_key_xor(file, key)
+    if key.length == 0
+        raise "cannot encode with a zero-length key"
+    end
+    result = ""
+    keyIndex = 0
+    File.open(file, "r") do |f|
+        f.each_line do |line|
+            for i in 0..(line.length - 1)
+                c = line[i]
+                k = key[keyIndex % key.length]
+                keyIndex += 1
+                xored = c.ord ^ k.ord
+                hex = convert_byte_to_hex(xored)
+                result += hex
+                puts c + " ^ " + k + " => " + hex
+            end
+        end
+    end
+    return result
+end
+

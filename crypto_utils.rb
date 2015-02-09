@@ -111,3 +111,158 @@ def convert_hex_to_base64(hex_string)
     end 
     return result
 end
+
+def convert_nibble_to_hex(byte)
+    if byte < 0
+        raise "cannot convert < 0 byte to hex"
+    end
+    if byte < 10
+        return byte.to_s()
+    end
+    if byte < 16
+        return ('a'.ord + (byte - 10)).chr
+    end
+    raise "cannot convert > 15 byte to hex"
+end
+
+def convert_bytes_to_hex(bytes)
+    result = ""
+    for i in 0..(bytes.length - 1)    
+        # do each half of the byte separately
+        nibble1 = (bytes[i] & 0xf0) >> 4
+        nibble2 = bytes[i] & 0xf
+        result += convert_nibble_to_hex(nibble1)
+        result += convert_nibble_to_hex(nibble2)
+    end
+    # strip off any leading '0'
+    # while result.length > 0 && result[0] == '0'
+        # result = result[1..(result.length - 1)]
+    # end
+    return result
+end
+
+def xor_bytes(lhs, rhs)
+    # work from rhs to make different length buffers easier to handle.
+    # i've padded from the lhs, not sure if this is the right way to do it, easy enough to change though.
+    max_length = lhs.length > rhs.length ? lhs.length : rhs.length;
+    results = bytes = Array.new(max_length)
+    for i in 0..(max_length - 1)
+        lhs_byte = i < lhs.length ? lhs[lhs.length - (i + 1)] : 0
+        rhs_byte = i < rhs.length ? rhs[rhs.length - (i + 1)] : 0
+        results[max_length - (i + 1)] = lhs_byte ^ rhs_byte
+    end
+    return results
+end
+
+def xor_hex(lhs_hex, rhs_hex)
+    lhs_bytes = convert_hex_string_to_bytes(lhs_hex)
+    rhs_bytes = convert_hex_string_to_bytes(rhs_hex)
+    bytes = xor_bytes(lhs_bytes, rhs_bytes)
+    return convert_bytes_to_hex(bytes)
+end
+
+def score_text(text)
+    # strategy
+    #   count the letters and add them up
+    #   rank them
+    #   if any of the top 6 are the expected top 6 then score += 1
+    #   if any of the bottom 6 are the expected top 6 then score -= 1
+    #   keep track of lower cs upper case counts. bonus 0.5 points for all upper case, all lower case or more lower than upper case.
+    lowerCaseCount = 0
+    upperCaseCount = 0
+    spaceCount = 0
+    map = Hash.new()
+    for i in 0..(text.length - 1)
+        c = text[i].downcase
+        if c.ord >= 'a'.ord && c.ord <= 'z'.ord
+            # a-z
+            map[c] = map.has_key?(c) ? map[c] + 1 : 1
+        end
+        ord = text[i].ord
+        if ord >= 'a'.ord && ord <= 'z'.ord
+            lowerCaseCount += 1
+        end
+        if ord >= 'A'.ord && ord <= 'Z'.ord
+            upperCaseCount += 1
+        end
+        if text[i] == ' '
+            spaceCount += 1
+        end
+    end
+    
+    # find the 6 most common characters
+    scores = [ 0, 0, 0, 0, 0, 0 ]
+    characters = [ '-', '-', '-', '-', '-' ]    
+    for i in 0..(map.keys.length - 1)
+        character = map.keys[i]
+        score = map[character]
+        for j in 0..(scores.length - 1)
+            if scores[j] < score
+                scores[j] = score
+                characters[j] = character
+                break
+            end
+        end
+    end
+    
+    # build the score by seeing which letters are in the top 6
+    score = 0
+    for i in 0..(scores.length - 1)
+        if scores[i] == 0
+            next
+        end
+        c = characters[i]
+        if c == 'e' || c == 't' || c == 'a' || c == 'o' || c == 'i' || c == 'n'
+            score += 1
+        end
+        if c == 'z' || c == 'q' || c == 'x' || c == 'j' || c == 'k' || c == 'v'
+            score -= 1
+        end
+    end
+    
+    # check for the bonus case-based 0.5 points
+    if ((lowerCaseCount == 0 && upperCaseCount > 0) || (lowerCaseCount > 0 && upperCaseCount == 0) || (lowerCaseCount > 0 && upperCaseCount > 0 && lowerCaseCount > upperCaseCount))
+        score += 0.5
+    end
+    
+    # if lower + upper case counts don't constitute a decent amount of the text then penalise the decoding
+    if (lowerCaseCount + upperCaseCount + spaceCount) < (text.length * 0.85)
+        score -= 5
+    end
+    
+    return score
+end
+
+def repeat_byte(byte, n)
+    bytes = Array.new(n)
+    for i in 0..(n - 1)
+        bytes[i] = byte
+    end
+    return bytes
+end
+
+def convert_bytes_to_string(bytes)
+    result = ""
+    for i in 0..(bytes.length - 1)
+        result += bytes[i].chr
+    end
+    return result
+end
+
+def decode_single_byte_xor_cypher(encoded_hex)
+    encoded_bytes = convert_hex_string_to_bytes(encoded_hex)    
+    bestByte = -1
+    bestScore = -1
+    bestDecoded = ""    
+    for byte in 0..255
+        xor_bytes = repeat_byte(byte, encoded_bytes.length)
+        decoded = convert_bytes_to_string(xor_bytes(encoded_bytes, xor_bytes))
+        score = score_text(decoded)
+        if score > bestScore
+            bestByte = byte
+            bestScore = score
+            bestDecoded = decoded
+        end
+    end
+    return bestDecoded, bestByte, bestScore;
+end

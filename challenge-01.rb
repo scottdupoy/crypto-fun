@@ -1,7 +1,7 @@
 require './crypto_utils.rb'
 
-hexString = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"
-base64String = ConvertHexToBase64(hexString);
+hex_string = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"
+base64_string = convert_hex_to_base64(hex_string);
 
-puts "hex:    " + hexString
-puts "base64: " + base64String
+puts "hex:    " + hex_string
+puts "base64: " + base64_string

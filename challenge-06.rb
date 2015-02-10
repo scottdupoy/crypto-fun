@@ -34,3 +34,9 @@ b = "wokka wokka!!!"
 
 distance = calculateDistance(a, b)
 puts "distance: " + distance.to_s()
+
+for key_size in 2..40
+    puts "key size: " + key_size.to_s()
+    puts "early exit break"
+    break
+end

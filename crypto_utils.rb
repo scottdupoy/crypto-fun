@@ -41,25 +41,65 @@ def convert_six_bit_number_to_base64_char(six_bit_number)
     if six_bit_number < 0
         raise "Cannot convert negative number to base 64 char"
     end    
+
     # A-Z
     if six_bit_number <= 25
         return ('A'.ord + six_bit_number).chr
     end
+
     # a-z
     if six_bit_number <= 51
         return ('a'.ord + six_bit_number - 26).chr
     end
+
     # 0-9
     if six_bit_number <= 61
         return (six_bit_number - 52).to_s()
     end
+
+    # +
     if six_bit_number == 62
         return '+'
     end
+
+    # /
     if six_bit_number == 63
         return '/'
     end
     raise "Cannot convert number > 63 to base 64 char"
+end
+
+def convert_base64_char_to_six_bit_number(char)
+    ord = char.ord
+
+    # A-Z
+    if ord >= 'A'.ord && ord <= 'Z'.ord
+        return ord - 'A'.ord
+    end
+
+    # a-z
+    if ord >= 'a'.ord && ord <= 'z'.ord
+        return (ord - 'a'.ord) + 26
+    end
+
+    # 0-9
+    if ord >= '0'.ord && ord <= '9'.ord
+        return (ord - '0'.ord) + 52
+    end
+    
+    if char == "+"
+        return 62
+    end
+    if char == "/"
+        return 63
+    end
+
+    # special padding character
+    if char == "="
+        return 0
+    end
+    
+    raise "char is not a base64 character: " + char    
 end
 
 def convert_bytes_to_int(bytes)
@@ -272,25 +312,108 @@ def decode_single_byte_xor_cypher(encoded_hex)
     return bestDecoded, bestByte, bestScore;
 end
 
-def encrypt_repeating_key_xor(file, key)
+def encrypt_repeating_key_xor(buffer, key)
     if key.length == 0
         raise "cannot encode with a zero-length key"
     end
     result = ""
     keyIndex = 0
-    File.open(file, "r") do |f|
-        f.each_line do |line|
-            for i in 0..(line.length - 1)
-                c = line[i]
-                k = key[keyIndex % key.length]
-                keyIndex += 1
-                xored = c.ord ^ k.ord
-                hex = convert_byte_to_hex(xored)
-                result += hex
-                puts c + " ^ " + k + " => " + hex
-            end
+
+    for i in 0..(buffer.length - 1)
+        c = buffer[i]
+        k = key[keyIndex % key.length]
+        keyIndex += 1
+        xored = c.ord ^ k.ord
+        hex = convert_byte_to_hex(xored)
+        result += hex
+    end
+
+    return result
+end
+
+def sum_bits(byte)
+    sum = 0
+    for b in 0..7
+        sum += (((1 << b) & byte)) > 0 ? 1 : 0
+    end
+    sum
+end
+
+def calculate_distance(string1, string2)
+    if string1.length != string2.length
+        raise "can't calculate distance between 2 different length strings"
+    end
+
+    if string1 == string2
+        return 0
+    end
+
+    distance = 0
+    for index in 0..(string1.length - 1)
+        byte1 = string1[index].ord
+        byte2 = string2[index].ord
+        distance += sum_bits(byte1 ^ byte2)
+    end
+    distance
+end
+
+def convert_base64_to_bytes(base64)
+    if (base64.length % 4) != 0
+        raise "buffer is not in 4 character blocks so not base64 so can't decode"
+    end
+    
+    # under-estimate the results length so last 1-3 bytes will have to be pushed
+    bytes = Array.new((3 * base64.length / 4) - 1)
+
+    byte_index = 0
+    for i in 0..(base64.length / 4 - 1)
+        block = base64[(i * 4)..(i * 4 + 3)]
+        puts block
+
+        char0 = block[0]
+        char1 = block[1]
+        char2 = block[2]
+        char3 = block[3]
+
+        # this function returns 0 if it's an "=" character
+        six_bit_0 = convert_base64_char_to_six_bit_number(char0)
+        six_bit_1 = convert_base64_char_to_six_bit_number(char1)
+        six_bit_2 = convert_base64_char_to_six_bit_number(char2)
+        six_bit_3 = convert_base64_char_to_six_bit_number(char3)
+
+        # put all the six bit sections together
+        bits = (six_bit_0 << 18) | (six_bit_1 << 12) | (six_bit_2 << 6) | (six_bit_3)
+
+        # pull the 3 bytes out of the 24 bits we've assembled, skipping any padding bytes
+        byte_count = char2 == "=" ? 1 : (char3 == "=" ? 2 : 3)
+        for i in 0..(byte_count - 1)
+            shift = (2 - i) * 8
+            byte = (bits >> shift) & 0xff
+            bytes[byte_index] = byte
+            byte_index += 1
         end
     end
-    return result
+
+    bytes
+end
+
+def read_file(file)
+    buffer = "";
+    File.open(file, "r") do |f|
+        f.each_line do |line|
+            buffer += line
+        end
+    end
+    buffer
+end
+
+def read_file_comp_lines(file)
+    buffer = "";
+    File.open(file, "r") do |f|
+        f.each_line do |line|
+            buffer += line.chomp()
+        end
+    end
+    buffer
 end
 

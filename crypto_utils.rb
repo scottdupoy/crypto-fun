@@ -339,20 +339,22 @@ def sum_bits(byte)
     sum
 end
 
-def calculate_distance(string1, string2)
-    if string1.length != string2.length
-        raise "can't calculate distance between 2 different length strings"
+def convert_string_to_bytes(s)
+    bytes = Array.new(s.length)
+    for index in 0..(s.length - 1)
+        bytes[index] = s[index].ord
     end
+    bytes
+end
 
-    if string1 == string2
-        return 0
+def calculate_distance(buffer1, buffer2)
+    if buffer1.length != buffer2.length
+        raise "can't calculate distance between 2 different length buffers"
     end
 
     distance = 0
-    for index in 0..(string1.length - 1)
-        byte1 = string1[index].ord
-        byte2 = string2[index].ord
-        distance += sum_bits(byte1 ^ byte2)
+    for index in 0..(buffer1.length - 1)
+        distance += sum_bits(buffer1[index] ^ buffer2[index])
     end
     distance
 end
@@ -368,7 +370,6 @@ def convert_base64_to_bytes(base64)
     byte_index = 0
     for i in 0..(base64.length / 4 - 1)
         block = base64[(i * 4)..(i * 4 + 3)]
-        puts block
 
         char0 = block[0]
         char1 = block[1]
@@ -407,7 +408,7 @@ def read_file(file)
     buffer
 end
 
-def read_file_comp_lines(file)
+def read_file_chomp_lines(file)
     buffer = "";
     File.open(file, "r") do |f|
         f.each_line do |line|

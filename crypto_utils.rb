@@ -221,7 +221,7 @@ def score_text(text)
         c = text[i].downcase
         if c.ord >= 'a'.ord && c.ord <= 'z'.ord
             # a-z
-            map[c] = map.has_key?(c) ? map[c] + 1 : 1
+            map[c] = map.has_key?(c) ? (map[c] + 1) : 1
         end
         ord = text[i].ord
         if ord >= 'a'.ord && ord <= 'z'.ord
@@ -237,16 +237,26 @@ def score_text(text)
     
     # find the 6 most common characters
     scores = [ 0, 0, 0, 0, 0, 0 ]
-    characters = [ '-', '-', '-', '-', '-' ]    
+    characters = [ '-', '-', '-', '-', '-', '-' ]    
+
+    # walk along the all of the characters and see which is most 
     for i in 0..(map.keys.length - 1)
+        # find the lowest of the current score
+        lowestScore = 99999
+        lowestScoreIndex = 0
+        for j in 0..(scores.length - 1)
+            if scores[j] < lowestScore
+                lowestScore = scores[j]
+                lowestScoreIndex = j
+            end
+        end
+        
+        # now check if the character we're checking has a higher score than the lowest in our top 6
         character = map.keys[i]
         score = map[character]
-        for j in 0..(scores.length - 1)
-            if scores[j] < score
-                scores[j] = score
-                characters[j] = character
-                break
-            end
+        if score > lowestScore
+            scores[lowestScoreIndex] = score
+            characters[lowestScoreIndex] = character
         end
     end
     
@@ -266,14 +276,14 @@ def score_text(text)
     end
     
     # check for the bonus case-based 0.5 points
-    if ((lowerCaseCount == 0 && upperCaseCount > 0) || (lowerCaseCount > 0 && upperCaseCount == 0) || (lowerCaseCount > 0 && upperCaseCount > 0 && lowerCaseCount > upperCaseCount))
-        score += 0.5
-    end
+    #if ((lowerCaseCount == 0 && upperCaseCount > 0) || (lowerCaseCount > 0 && upperCaseCount == 0) || (lowerCaseCount > 0 && upperCaseCount > 0 && lowerCaseCount > upperCaseCount))
+    #    score += 0.5
+    #end
     
     # if lower + upper case counts don't constitute a decent amount of the text then penalise the decoding
-    if (lowerCaseCount + upperCaseCount + spaceCount) < (text.length * 0.85)
-        score -= 5
-    end
+    #if (lowerCaseCount + upperCaseCount + spaceCount) < (text.length * 0.85)
+    #    score -= 5
+    #end
     
     return score
 end
@@ -294,41 +304,50 @@ def convert_bytes_to_string(bytes)
     return result
 end
 
-def decode_single_byte_xor_cypher(encoded_hex)
-    encoded_bytes = convert_hex_string_to_bytes(encoded_hex)    
-    bestByte = -1
-    bestScore = -1
-    bestDecoded = ""    
+def decode_single_byte_xor_cypher(encoded_bytes)
+    best_byte = -1
+    best_score = -99999
+    best_decoded = ""
     for byte in 0..255
         xor_bytes = repeat_byte(byte, encoded_bytes.length)
         decoded = convert_bytes_to_string(xor_bytes(encoded_bytes, xor_bytes))
         score = score_text(decoded)
-        if score > bestScore
-            bestByte = byte
-            bestScore = score
-            bestDecoded = decoded
+        puts "  " + byte.to_s + " => score: " + score.to_s
+        if score > best_score
+            puts "    new best"
+            best_byte = byte
+            best_score = score
+            best_decoded = decoded
         end
     end
-    return bestDecoded, bestByte, bestScore;
+    return best_decoded, best_byte, best_score;
 end
 
-def encrypt_repeating_key_xor(buffer, key)
-    if key.length == 0
-        raise "cannot encode with a zero-length key"
+def decrypt_repeating_byte_xor_cypher(encrypted_bytes, key_bytes)
+    if key_bytes.length == 0
+        raise "cannot decrypt with a zero-length key"
     end
-    result = ""
-    keyIndex = 0
+    decrypted = Array.new()
+    for i in 0..(encrypted_bytes.length - 1)
+        key_byte = key_bytes[i % key_bytes.length]
+        encrypted_byte = encrypted_bytes[i]
+        decrypted << (key_byte ^ encrypted_byte)
+    end
+    decrypted
+end
 
-    for i in 0..(buffer.length - 1)
-        c = buffer[i]
-        k = key[keyIndex % key.length]
-        keyIndex += 1
-        xored = c.ord ^ k.ord
-        hex = convert_byte_to_hex(xored)
-        result += hex
+def encrypt_repeating_key_xor(bytes, key_bytes)
+    if key_bytes.length == 0
+        raise "cannot encrypt with a zero-length key"
     end
 
-    return result
+    encrypted = Array.new()
+    for i in 0..(bytes.length - 1)
+        byte = bytes[i]
+        key = key_bytes[i % key_bytes.length]
+        encrypted << (byte ^ key)
+    end
+    encrypted
 end
 
 def sum_bits(byte)

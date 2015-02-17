@@ -44,6 +44,7 @@ for key_size in 2..40
     end
 end
 
+
 # work on the smallest distances we've found
 for min_index in 0..(min_key_sizes.length - 1)
     key_size = min_key_sizes[min_index]
@@ -51,8 +52,33 @@ for min_index in 0..(min_key_sizes.length - 1)
         break;
     end
 
-    puts "min key size: " + key_size.to_s
+    puts "testing minimal key_size: " + key_size.to_s
+    
+    # split the bytes into groups based on the key size. each member of the following
+    # array will represent the characters encoded using one of the characters of the key
+    byte_groups = Array.new(key_size)
+    for byte_group_index in 0..(key_size - 1)
+        byte_groups[byte_group_index] = Array.new()
+    end
+
+    # walk along the bytes and add them to the appropriate group
+    for byte_index in 0..(bytes.length - 1)
+        byte_groups[byte_index % key_size] << bytes[byte_index]
+    end
+
+    # break each group using single character xor, build the key
+    key_string = ""
+    key_bytes = Array.new()
+    for byte_group_index in 0..(key_size - 1)
+        decoded, xor_byte, score = decode_single_byte_xor_cypher(byte_groups[byte_group_index])
+        puts "  " + byte_group_index.to_s + " => " + xor_byte.to_s + " => " + xor_byte.chr
+        key_string += xor_byte.chr
+        key_bytes << xor_byte
+    end
+
+    puts "  key: [" + key_string + "]"
+
+    decoded_bytes = decrypt_repeating_byte_xor_cypher(bytes, key_bytes)
+    #puts convert_bytes_to_string(decoded_bytes)
 end
 
-#def decode_single_byte_xor_cypher(encoded_hex)
-#distance = calculate_distance(convert_string_to_bytes(a), convert_string_to_bytes(b))

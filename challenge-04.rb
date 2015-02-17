@@ -2,7 +2,9 @@ require './crypto_utils.rb'
 
 File.open("challenge-04.txt", "r") do |f|
     f.each_line do |line|
-        decoded, byte, score = decode_single_byte_xor_cypher(line.chomp)
+        encoded_hex = line.chomp
+        encoded_bytes = convert_hex_string_to_bytes(encoded_hex)
+        decoded, byte, score = decode_single_byte_xor_cypher(encoded_bytes)
         if score < 2
             next
         end

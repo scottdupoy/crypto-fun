@@ -1,7 +1,8 @@
 require './crypto_utils.rb'
 
 encoded_hex = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
-decoded, byte, score = decode_single_byte_xor_cypher(encoded_hex)
+encoded_bytes = convert_hex_string_to_bytes(encoded_hex)
+decoded, byte, score = decode_single_byte_xor_cypher(encoded_bytes)
 
 puts "encoded_hex: " + encoded_hex
 puts

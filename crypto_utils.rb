@@ -267,6 +267,7 @@ def score_text(text)
             next
         end
         c = characters[i]
+        #puts "    characters[" + i.to_s + "] => " + c
         if c == 'e' || c == 't' || c == 'a' || c == 'o' || c == 'i' || c == 'n'
             score += 1
         end
@@ -276,14 +277,14 @@ def score_text(text)
     end
     
     # check for the bonus case-based 0.5 points
-    #if ((lowerCaseCount == 0 && upperCaseCount > 0) || (lowerCaseCount > 0 && upperCaseCount == 0) || (lowerCaseCount > 0 && upperCaseCount > 0 && lowerCaseCount > upperCaseCount))
-    #    score += 0.5
-    #end
+    if ((lowerCaseCount == 0 && upperCaseCount > 0) || (lowerCaseCount > 0 && upperCaseCount == 0) || (lowerCaseCount > 0 && upperCaseCount > 0 && lowerCaseCount > upperCaseCount))
+        score += 0.5
+    end
     
     # if lower + upper case counts don't constitute a decent amount of the text then penalise the decoding
-    #if (lowerCaseCount + upperCaseCount + spaceCount) < (text.length * 0.85)
-    #    score -= 5
-    #end
+    if (lowerCaseCount + upperCaseCount + spaceCount) < (text.length * 0.85)
+        score -= 10
+    end
     
     return score
 end
@@ -304,23 +305,31 @@ def convert_bytes_to_string(bytes)
     return result
 end
 
-def decode_single_byte_xor_cypher(encoded_bytes)
+def decrypt_single_byte_xor_cypher(encoded_bytes)
     best_byte = -1
     best_score = -99999
-    best_decoded = ""
+    best_decrypted = ""
     for byte in 0..255
         xor_bytes = repeat_byte(byte, encoded_bytes.length)
-        decoded = convert_bytes_to_string(xor_bytes(encoded_bytes, xor_bytes))
-        score = score_text(decoded)
-        puts "  " + byte.to_s + " => score: " + score.to_s
+        decrypted = convert_bytes_to_string(xor_bytes(encoded_bytes, xor_bytes))
+        score = score_text(decrypted)
+        
+        prefix = '-'
+        if (byte >= 'a'.ord && byte <= 'z'.ord) || (byte >= 'A'.ord && byte <= 'Z'.ord) || (byte >= '0'.ord && byte <= '9'.ord) || (byte == 32)
+            prefix = byte.chr
+        end
+        if prefix != '-'
+            #puts "  " + prefix + " => " + byte.to_s + " => score: " + score.to_s + " => " + decrypted[0, 60]
+        end
+        
         if score > best_score
-            puts "    new best"
+            #puts "    new best"
             best_byte = byte
             best_score = score
-            best_decoded = decoded
+            best_decrypted = decrypted
         end
     end
-    return best_decoded, best_byte, best_score;
+    return best_decrypted, best_byte, best_score;
 end
 
 def decrypt_repeating_byte_xor_cypher(encrypted_bytes, key_bytes)

@@ -15,17 +15,30 @@ end
 
 # find key sizes with minimum hamming distances
 for key_size in 2..40
-    if bytes.length < (2 * key_size)
-        puts "buffer isn't long enough to test a key size of " + key_size.to_s
+    
+    # work out the normalised distance, taking the average over the first n blocks all against each other
+    n = 10;
+    distance = 0;
+    distance_count = 0
+    for n in 1..(n - 1)
+        # check if there's room for the nth block
+        if bytes.length < ((n + 1) * key_size)
+            puts "not enough bytes to check any more iterations"
+            break
+        end        
+        for m in 0..(n - 1)
+            slice1 = bytes[n * key_size, key_size]
+            slice2 = bytes[m * key_size, key_size]
+            distance += calculate_distance(slice1, slice2)
+            distance_count += 1
+        end
+    end    
+    if distance_count == 0
+        # key_size must be larger than the byte buffer
         break
     end
+    normalised_distance = distance.to_f / (key_size * distance_count)
     
-    # work out the normalised distance
-    slice1 = bytes[0, key_size]
-    slice2 = bytes[key_size, key_size]
-    distance = calculate_distance(slice1, slice2)
-    normalised_distance = distance.to_f / key_size
-
     # check if this key_size/normalised_distance is smaller than the largest current
     # smallest value
     current_highest_min_distance = -1
@@ -45,14 +58,20 @@ for key_size in 2..40
 end
 
 
-# work on the smallest distances we've found
+# work on the smallest distances we've found and cache the best scored result
+best_score = -99999
+best_key_size = 0
+best_key_string = ""
+best_decrypted_bytes = []
+best_decrypted_string = ""
 for min_index in 0..(min_key_sizes.length - 1)
+
     key_size = min_key_sizes[min_index]
     if key_size == -1
         break;
     end
 
-    puts "testing minimal key_size: " + key_size.to_s
+    puts "testing decrypted key_size: " + key_size.to_s
     
     # split the bytes into groups based on the key size. each member of the following
     # array will represent the characters encoded using one of the characters of the key
@@ -70,15 +89,26 @@ for min_index in 0..(min_key_sizes.length - 1)
     key_string = ""
     key_bytes = Array.new()
     for byte_group_index in 0..(key_size - 1)
-        decoded, xor_byte, score = decode_single_byte_xor_cypher(byte_groups[byte_group_index])
-        puts "  " + byte_group_index.to_s + " => " + xor_byte.to_s + " => " + xor_byte.chr
+        decrypted, xor_byte, score = decrypt_single_byte_xor_cypher(byte_groups[byte_group_index])
         key_string += xor_byte.chr
         key_bytes << xor_byte
     end
 
-    puts "  key: [" + key_string + "]"
-
-    decoded_bytes = decrypt_repeating_byte_xor_cypher(bytes, key_bytes)
-    #puts convert_bytes_to_string(decoded_bytes)
+    decrypted_bytes = decrypt_repeating_byte_xor_cypher(bytes, key_bytes)
+    decrypted_string = convert_bytes_to_string(decrypted_bytes)
+    
+    score = score_text(decrypted_string)
+    if (score > best_score)
+        best_score = score
+        best_key_size = key_size
+        best_key_string = key_string
+        best_decrypted_bytes = decrypted_bytes
+        best_decrypted_string = decrypted_string
+    end
 end
 
+puts
+puts "key size:   " + best_key_size.to_s
+puts "key string: " + best_key_string
+puts "decrypted:"
+puts best_decrypted_string

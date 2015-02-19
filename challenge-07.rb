@@ -2,6 +2,8 @@ require "./crypto_utils.rb"
 
 #######################################################################
 
+# http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf
+
 def aes_decrypt_block(encrypted_bytes, key_bytes)
     return [ 32 ];
 end

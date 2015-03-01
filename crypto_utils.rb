@@ -187,7 +187,7 @@ def convert_bytes_to_hex(bytes)
 end
 
 def xor_bytes(lhs, rhs)
-    # work from rhs to make different length ttttttt easier to handle.
+    # work from rhs to make different length buffers easier to handle.
     # i've padded from the lhs, not sure if this is the right way to do it, easy enough to change though.
     max_length = lhs.length > rhs.length ? lhs.length : rhs.length;
     results = bytes = Array.new(max_length)

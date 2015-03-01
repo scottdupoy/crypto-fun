@@ -187,7 +187,7 @@ def convert_bytes_to_hex(bytes)
 end
 
 def xor_bytes(lhs, rhs)
-    # work from rhs to make different length buffers easier to handle.
+    # work from rhs to make different length ttttttt easier to handle.
     # i've padded from the lhs, not sure if this is the right way to do it, easy enough to change though.
     max_length = lhs.length > rhs.length ? lhs.length : rhs.length;
     results = bytes = Array.new(max_length)
@@ -444,5 +444,14 @@ def read_file_chomp_lines(file)
         end
     end
     buffer
+end
+
+def convert_word_into_bytes(word)
+    bytes = Array.new(4)
+    bytes[0] = (word >> 24) & 0xff
+    bytes[1] = (word >> 16) & 0xff
+    bytes[2] = (word >> 8) & 0xff
+    bytes[3] = word & 0xff
+    bytes
 end
 

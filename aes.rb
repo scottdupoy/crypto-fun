@@ -130,6 +130,73 @@ class AdvancedEncryptionStandard
         end
         bytes
     end
+
+    def shift_rows(bytes)
+        if bytes.length != 16
+            raise "cannot handle non-16 byte row shifts"
+        end
+        results = Array.new(bytes.length)
+        for i in 0..3
+            for j in 0..3
+                word_index = (i + j) % 4
+                source_byte_index = (word_index * 4) + j
+                target_byte_index = (i * 4) + j
+                results[target_byte_index] = bytes[source_byte_index]
+            end
+        end
+        results
+    end
+
+    def mix_word(bytes)
+        a = Array.new(4)
+        b = Array.new(4)
+        # The array 'a' is simply a copy of the input array 'r'
+        # The array 'b' is each element of the array 'a' multiplied by 2
+        # in Rijndael's Galois field
+        # a[n] ^ b[n] is element n multiplied by 3 in Rijndael's Galois field
+        for i in 0..3
+            a[i] = bytes[i]
+            # h is 0xff if the high bit of r[c] is set, 0 otherwise
+            # arithmetic right shift, thus shifting in either zeros or ones
+            h = bytes[i] > 127 ? 0xff : 0x0
+            b[i] = (bytes[i] << 1) && 0x7f
+            b[i] ^= (h & 0x1b)
+        end
+        results = Array.new(bytes.length)
+        results[0] = b[0] ^ a[3] ^ a[2] ^ b[1] ^ a[1]
+        results[1] = b[1] ^ a[0] ^ a[3] ^ b[2] ^ a[2]
+        results[2] = b[2] ^ a[1] ^ a[0] ^ b[3] ^ a[3]
+        results[3] = b[3] ^ a[2] ^ a[1] ^ b[0] ^ a[0]
+        results
+    end
+
+    def mix_columns(bytes)
+        # http://en.wikipedia.org/wiki/Rijndael_mix_columns
+        if bytes.length != 16
+            raise "cannot handle non-16 byte row shifts"
+        end
+
+        results = Array.new(bytes.length)
+
+        # extract each word and process it in turn
+        for column in 0..3
+            # pull out the bytes for this column
+            word = Array.new(4)
+            for row in 0..3
+                word[row] = bytes[(column * 4) + row]
+            end
+
+            # mix the column
+            word = mix_word(word)
+
+            # insert the mixed word back in to the results array
+            for row in 0..3
+                results[(column * 4) + row] = word[row]
+            end
+        end
+
+        results
+    end
     
     def encrypt(key_bytes, input_bytes)
         nb = get_number_of_state_columns()
@@ -154,7 +221,12 @@ class AdvancedEncryptionStandard
         for round in 1..(nr - 1)
             puts "round[" + round.to_s.rjust(2) + "].start  " + convert_bytes_to_hex(state)
             state = sub_bytes(state)
-            puts "round[" + round.to_s.rjust(2) + "].start  " + convert_bytes_to_hex(state)
+            puts "round[" + round.to_s.rjust(2) + "].s_box  " + convert_bytes_to_hex(state)
+            state = shift_rows(state)
+            puts "round[" + round.to_s.rjust(2) + "].s_row  " + convert_bytes_to_hex(state)
+            state = mix_columns(state)
+            puts "round[" + round.to_s.rjust(2) + "].m_col  " + convert_bytes_to_hex(state)
+            
             break
         end
         
